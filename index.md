@@ -64,6 +64,79 @@ The downsides of this approach are that Sphinx domains are less flexible than a 
 The former could be mitigated by using the Rubin domain for linking, and creating additional custom for styling and structure.
 The later issue could be mitigated by a documentation link service, provided by Ook, described next.
 
+## The Ook link service
+
+[Ook][Ook] is an existing SQuaRE service that serves as a documentation librarian.
+Ook's existing role is to index documents and populate the Algolia full-text search database that powers the Rubin Observatory documentation search at www.lsst.io.
+We propose to extend Ook to also index the link inventories (generally speaking the `objects.inv` Intersphinx inventory files and Rubin's custom link inventories if Sphinx domains aren't used).
+The Ook link service would sync these inventories into a Postgres database and then provide a REST API for querying the inventories.
+
+Ook's link API would be structured around the different Sphinx domains, including the Rubin domain for linking to Rubin data products and other entities.
+For example, to get the link to a column's documentation:
+
+```{code-block}
+GET /ook/links/domain/rubin/dr/dp02/table/visit/column/physical_filter
+```
+
+With the same technology, we can provide a generic API for other Sphinx domains:
+
+```{code-block}
+GET /ook/links/domain/python/module/lsst.afw.table
+```
+
+### Discovery and URL templating
+
+The root endpoints for each link domain would provide templated URLs for the different entities:
+
+```{code-block}
+GET /ook/links/domain/rubin
+```
+
+```{code-block} json
+{
+  "entities": {
+    "data-release": "/ook/links/domain/rubin/dr/{release}",
+    "table": "/ook/links/domain/rubin/dr/{release}/tables/{table}",
+    "column": "/ook/links/domain/rubin/dr/{release}/tables/{table}/columns/{column}"
+  },
+  "collections": {
+    "data-releases": "/ook/links/domain/rubin/dr",
+    "tables": "/ook/links/domain/rubin/dr/{release}/tables",
+    "columns": "/ook/links/domain/rubin/dr/{release}/tables/{table}/columns"
+  }
+}
+```
+
+### Structure of a link response
+
+The JSON response for a specific entity would include, at a minimum, the URL to the documentation page and anchor for that entity.
+
+```{code-block}
+GET /ook/links/domain/rubin/dr/dr1/table/visit/column/physical_filter
+```
+
+```{code-block} json
+{
+  "links": [
+    {
+      "url": "https://dr1.lsst.io/reference/tables/visit#physical_filter",
+      "kind": "documentation",
+      "source_title": "Data Release 1 Documentation"
+    }
+  ]
+}
+```
+
+These link responses should anticipate that multiple links might be associated with a single entity.
+For one, the "pull" nature of the Ook link service means that multiple documentation sites might claim to document the same entity.
+To help clients distinguish between multiple links, Ook can provide some context for the links (whether it is a documentation site, or a document/technote, or a tutorial notebook, etc.).
+As well, Ook can provide the name of the site that hosts the link.
+
+The response schema should also anticipate that some entities might not just be related to deep links into documentation, but might also be related to images or other datasets.
+Besides the `link` field, the response could include a `blobs` field that provides URLs that a client can follow to download the data.
+
+
 [Sphinx]: https://www.sphinx-doc.org/
 [Documenteer]: https://documenteer.lsst.io/
 [Intersphinx]: https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html
+[Ook]: https://github.com/lsst-sqre/ook
