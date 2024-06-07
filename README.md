@@ -1,11 +1,16 @@
 [![Website](https://img.shields.io/badge/sqr--086-lsst.io-brightgreen.svg)](https://sqr-086.lsst.io)
 [![CI](https://github.com/lsst-sqre/sqr-086/actions/workflows/ci.yaml/badge.svg)](https://github.com/lsst-sqre/sqr-086/actions/workflows/ci.yaml)
 
-# A data documentation deep linking service with IVOA DataLink
+# Deep linking to data documentation with IVOA DataLink
 
 ## SQR-086
 
-LSST users retrieve data through VO services, either directly or through clients like the Rubin Science Platform's Portal. IVOA provides a DataLink specification that allows datasets to express relationships with other resources, such as related datasets. This technote outlines a method for using DataLink to also link into the documentation for data, both at the table and column level. With this standards-based approach, clients like the Portal can show descriptions and links to documentation from their user infraces.
+When presenting LSST data through VO services, we want to annotate that data with links to documentation, such as the table and column descriptions in data release documentation sites hosted on `lsst.io`.
+This technote describes a system where we implement a linking service that uses the IVOA DataLink standard to provide links to table and column documentation.
+This link service, which resides in the Rubin Science Platform (RSP), is called by TAP schema queries.
+In turn, the link service queries Ook, Rubin Observatory's documentation metadata service that indexes the link inventories of documentation sites.
+These link inventories are prepared and included with Sphinx documentation builds using Sphinx extensions provided by the Documenteer package.
+With this standards-based approach, clients like the Portal can show descriptions and links to documentation from their user interfaces.
 
 **Links:**
 
@@ -13,7 +18,6 @@ LSST users retrieve data through VO services, either directly or through clients
 - Alternative editions: https://sqr-086.lsst.io/v
 - GitHub repository: https://github.com/lsst-sqre/sqr-086
 - Build system: https://github.com/lsst-sqre/sqr-086/actions/
-
 
 ## Build this technical note
 
