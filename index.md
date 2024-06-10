@@ -15,6 +15,7 @@ In this architecture, TAP tables and columns are annotated with links to Rubin d
 This documentation is built with the [Sphinx][Sphinx]/[Documenteer][Documenteer] toolchain.
 To accomplish this, we will built upon the core Sphinx technologies of domains and Intersphinx.
 
+(rubin-domain)=
 ### Marking up documentation with link anchors
 
 In the documentation source, we will use custom extensions (reStructuredText roles and directives) provided through [Documenteer][Documenteer] to annotate specific pages and sections as documenting a table or column.
@@ -65,11 +66,28 @@ Ook's existing role is to index documents and populate the Algolia full-text sea
 We propose to extend Ook to also index the link inventories (generally speaking the `objects.inv` Intersphinx inventory files and Rubin's custom link inventories if Sphinx domains aren't used).
 The Ook link service would sync these inventories into a Postgres database and then provide a REST API for querying the inventories.
 
+```{mermaid}
+flowchart LR
+  objadapter[Object Inventory Adapter]
+  objects["dr1.lsst.io/objects.inv"]
+  documenteer[Documenteer Sphinx Domain]
+  service[Ook Link Service]
+  db[Postgres Database]
+  api[Ook Link API]
+  vo[VO data linking service]
+  vo --> api
+  api --> service
+  service --> objadapter
+  objadapter --> objects
+  documenteer --> objects
+  service --> db
+```
+
 Ook's link API would be structured around the different Sphinx domains, including the Rubin domain for linking to Rubin data products and other entities.
 For example, to get the link to a column's documentation:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dp02/table/visit/column/physical_filter
+GET /ook/links/domain/rubin/dr/dp02/tables/visit/columns/physical_filter
 ```
 
 With the same technology, we can provide a generic API for other Sphinx domains:
@@ -77,6 +95,13 @@ With the same technology, we can provide a generic API for other Sphinx domains:
 ```{code-block}
 GET /ook/links/domain/python/module/lsst.afw.table
 ```
+
+Internally, the Ook link service would follow a process like this:
+
+1. Based on a manual trigger, or Kafka message from the LTD documentation publishing system, Ook would trigger an update of the project's link inventory. This trigger is similar to how Ook's Algolia indexding for a documentation project is triggered.
+2. Ook interface to Sphinx's `objects.inv` file format downloads and read the inventory file.
+3. The Ook link service upserts the entities from the inventory into a Postgres database. Ook maintains the schemas for these object inventory tables given that the Ook API also needs is aware of what Sphinx domains it publishes.
+4. The Ook link service provides a REST API for querying the link inventory.
 
 ### Discovery and URL templating
 
@@ -101,13 +126,17 @@ GET /ook/links/domain/rubin
 }
 ```
 
-### Structure of a link response
+So long as the names for the entities and URL template variables are well known, this root endpoint can provide a discovery and auto-configuration layer for clients.
 
-The JSON response for a specific entity would include, at a minimum, the URL to the documentation page and anchor for that entity.
+### Structure of the entity link API
+
+The entity linking APIs let a client get the links for a specific entity based on the URL structure.
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dr1/table/visit/column/physical_filter
+GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns/physical_filter
 ```
+
+The JSON response for a specific entity would include, at a minimum, the URL to the documentation page and anchor for that entity.
 
 ```{code-block} json
 {
@@ -128,6 +157,65 @@ As well, Ook can provide the name of the site that hosts the link.
 
 The response schema should also anticipate that some entities might not just be related to deep links into documentation, but might also be related to images or other datasets.
 Besides the `link` field, the response could include a `blobs` field that provides URLs that a client can follow to download the data.
+
+### Structure of the entity collections API
+
+A client may need bulk access to links to a collection of entities, without needing to make a large number of HTTP requests.
+For example, a client may need all columns in a table, or all tables in a data release.
+For these cases, the collections APIs can provide an array of entities and their links:
+
+```{code-block}
+GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns
+```
+
+With a query string syntax, we could let the client get a subset of the collection.
+for example, all columns that start with a prefix:
+
+```{code-block}
+GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns?prefix=visit_
+```
+
+The response includes both a data field and a separate pagination field:
+
+```{code-block} json
+{
+  "data": [
+    {
+      "name": "physical_filter",
+      "links": [
+        {
+          "url": "https://dr1.lsst.io/reference/tables/visit#physical_filter",
+          "kind": "documentation",
+          "source_title": "Data Release 1 Documentation"
+        }
+      ]
+    },
+    {
+      "name": "visit_id",
+      "links": [
+        {
+          "url": "https://dr1.lsst.io/reference/tables/visit#visit_id",
+          "kind": "documentation",
+          "source_title": "Data Release 1 Documentation"
+        }
+      ]
+    }
+  ],
+  "pagination": {
+    "previous": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?before=physical_filter"
+    "next": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?after=visit_id"
+  }
+}
+```
+
+This response schema features cursor-based pagination.
+
+#### Including child entities?
+
+Many entities in the [Rubin domain](#rubin-domain) described here are natural hierachical.
+A data release contains tables, and those tables contain columns.
+It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entitities in the response for the parent entity).
+If we do this, we should study how other APIs handle pagination in these types of responses.
 
 
 [Sphinx]: https://www.sphinx-doc.org/
