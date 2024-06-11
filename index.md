@@ -22,28 +22,32 @@ The Firefly-based Portal shows information about tables and columns by making qu
 The LSST TAP schemas are annotated with [DataLink][datalink] service descriptors points to a link service, also hosted in the RSP, that provides links to entities like tables and columns in an LSST data release.
 These service descriptors are added to the TAP schema through definition files in [sdm_schemas][sdm_schemas], which is managed through [Felis][felis].
 The service descriptors specify access URLs, including query parameters, to a link endpoint provided by another RSP service.
-In the RSP, the datalinker Python project provides a link service that can be extended for this application.
-The link endpoint, through the datalinker service, operates in the RSP so that it can be aware of what data is available in that RSP, and can make any last-mile transformations to the links, including adding RSP specific links.
+In the RSP, the [datalinker][datalinker] Python project provides a link service that can be extended for this application.
+The link endpoint, through the datalinker service, operates in the RSP so that it can be aware of what data is available in that RSP, and can make any last-mile transformations to the links, including adding RSP-specific links.
+See [](#datalinker-service).
 
 [^agnostic]: Although we use the Portal as the example, and also as the driving use case, by adopting the IVOA DataLink standard, other VO clients can also get documentation links.
 
 Most documentation links will be provided through documentation sites hosted outside the Rubin Science Platform on `lsst.io`, which is managed by the LSST the Docs ({sqr}`006`) static documentation site platform.
 So that the link service in the RSP doesn't have to be aware in detail of these documentation sites, and also so that other data facilities can mix in other documentation sources for their RSP deployments, we propose that the link service also acts as a proxy to a link provider that lives closer to the documentation domain.
 
-The [Ook][ook] documentation librarian service, which is hosted in the Roundtable internal services Kubernetes cluster, already indexes documentation sites.
+The [Ook][ook] documentation librarian service, which is hosted in the Roundtable internal services Kubernetes cluster, already indexes Rubin documentation sites.
 For this application, Ook provides a new links API that provides deep links into the documentation sites for specific entities like data release data and column documentation.
+See [](#ook-link-service).
 
 To associate semantic meaning with the deep link anchors in documentation, Ook will interface specifically with the [Intersphinx][intersphinx] object inventory files that Sphinx projects publish to their `/objects.inv` paths.
 These object inventories associate hyperlink targets to all [domain][domain] entities in a Sphinx project.
 To make meaningful domain entities, we will introduce a custom [Sphinx domain][domain] for Rubin Observatory documentation to mark up data release reference documentation and related concepts.
+See [](#link-inventories).
 
-Overall this system provides a standards-based approach both for linking to documentation in with VO clients and for authoring documentation with Sphinx.
+Overall this system provides a standards-based approach both for linking to documentation with VO clients and for authoring documentation with Sphinx.
 
+(link-inventories)=
 ## Link inventories in Sphinx documentation
 
 In this architecture, TAP tables and columns are annotated with links to Rubin documentation, such as a data release documentation site.
 This documentation is built with the [Sphinx][Sphinx]/[Documenteer][Documenteer] toolchain.
-To accomplish this, we will built upon the core Sphinx technologies of [domains][domain] and [Intersphinx][intersphinx] to structure and annotate Rubin data release documentation that cross-referenceable with machine-readable link inventories.
+To accomplish this, we will build upon the core Sphinx technologies of [domains][domain] and [Intersphinx][intersphinx] to structure and annotate Rubin data release documentation that it is cross-referenceable with machine-readable link inventories.
 
 (rubin-domain)=
 ### Marking up documentation with link anchors
@@ -53,7 +57,7 @@ These Sphinx extensions will be part of a Rubin Observatory [Sphinx *domain*][do
 Sphinx domains are collections of directives that allow writers to document specific types of entities and cross reference those.
 Sphinx includes built-in domains for Python, C++, and other programming languages, which is how Sphinx API references are built.
 
-An example of how a table and column might be documented in a a Sphinx project:
+An example of how a table and column might be documented in a Sphinx project:
 
 ```{code-block} rst
 
@@ -73,12 +77,13 @@ and ``Visit`` table.
 ```
 
 These custom directives (e.g., `:rubin:table:`, `:rubin:column:`) leave structured hyperlink anchors in the generated HTML output.
-Complementary Sphinx roles let writer cross-reference these entities in other parts of the documentation project (or even in other Sphinx projects with Intersphinx):
+Complementary Sphinx roles let writers cross-reference these entities in other parts of the documentation project (or even in other Sphinx projects with [Intersphinx][intersphinx]):
 
 ```{code-block} rst
 See the :rubin:table:`Visit` table for more information.
 
-The filter for the observation is given in the :rubin:column:`physical_filter` column.
+The filter for the observation is given
+in the :rubin:column:`physical_filter` column.
 ```
 
 ### Publishing link inventories from Sphinx documentation
@@ -93,7 +98,7 @@ We will use that API in the [Ook link service](#ook-link-service).
 
 [Ook][Ook] is an existing SQuaRE service that serves as a documentation librarian.
 Ook's existing role is to index documents and populate the Algolia full-text search database that powers the Rubin Observatory documentation search at www.lsst.io.
-We propose to extend Ook to also index the link inventories (generally speaking the `objects.inv` Intersphinx inventory files and Rubin's custom link inventories if Sphinx domains aren't used).
+We propose to extend Ook to also index the link inventories (generally speaking the `objects.inv` Intersphinx inventory files).
 The Ook link service would sync these inventories into a Postgres database and then provide a REST API for querying the inventories.
 
 ```{mermaid}
@@ -247,6 +252,10 @@ A data release contains tables, and those tables contain columns.
 It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entitities in the response for the parent entity).
 If we do this, we should study how other APIs handle pagination in these types of responses.
 
+(datalinker-service)=
+## Implementation of a VO data linking endpoint
+
+TK
 
 [Sphinx]: https://www.sphinx-doc.org/
 [Documenteer]: https://documenteer.lsst.io/
@@ -257,3 +266,4 @@ If we do this, we should study how other APIs handle pagination in these types o
 [domain]: https://www.sphinx-doc.org/en/master/extdev/domainapi.html
 [datalink]: https://www.ivoa.net/documents/DataLink/
 [tap]: https://www.ivoa.net/documents/TAP/
+[datalinker]: https://github.com/lsst-sqre/datalinker
