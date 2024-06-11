@@ -237,7 +237,7 @@ The response includes both a data field and a separate pagination field:
     }
   ],
   "pagination": {
-    "previous": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?before=physical_filter"
+    "previous": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?before=physical_filter",
     "next": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?after=visit_id"
   }
 }
@@ -255,7 +255,43 @@ If we do this, we should study how other APIs handle pagination in these types o
 (datalinker-service)=
 ## Implementation of a VO data linking endpoint
 
-TK
+From the Rubin Science Platform, clients won't directly query the Ook link service.
+Instead, they will query a VO data linking service that uses the Ook link service as a backend.
+As a specific example [datalinker][datalinker] is a Python project that hosts data linking endpoints for the RSP for use the [DataLink][datalink] protocol.
+
+There are two parts to the [DataLink][datalink] specification: service descriptors and the link endpoints.
+
+### Service descriptors for TAP schema documentation
+
+DataLink service descriptors annotate a result with a link endpoints that can be called by the client to get information related to the result.
+For a TAP query result, the service descriptor would be embedded in the result's VOTable under a `RESOURCE` element with a `type="meta"` attribute.
+
+```{note}
+For a TAP schema query result, is this also the case?
+```
+
+For the RSP, datalink service descriptors are built from templates hosted in the [sdm_schemas][sdm_schemas] repository.
+
+```{literalinclude} service-descriptor-example.xml
+:language: xml
+```
+
+```{note}
+Questions:
+
+- What is the ID in this case?
+- What parameters can we meaningfully pass to the link endpoint? For example, can we specify a way to include all columns in a table? Can be specify a subset of columns?
+- Can the same link endpoint both describe a table itself and all its columns? Or is that two different services?
+```
+
+### Link endpoints for documentation
+
+The link endpoints, which are outlined by the service descriptors, respond with VOTables of documentation links.
+
+The link endpoints derive their data from the [Ook link service endpoints](#ook-link-service), and in fact the Ook link API generally mirrors the datalink endpoints for entity documentation links.
+The differences are that the datalink endpoint requests are authenticated with RSP credentials and that responses are VOTables.
+The VO datalink service should ideally cache responses from the Ook link service since the responses are generally stable and apply to all RSP users.
+
 
 [Sphinx]: https://www.sphinx-doc.org/
 [Documenteer]: https://documenteer.lsst.io/
