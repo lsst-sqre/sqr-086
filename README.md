@@ -23,8 +23,6 @@ With this standards-based approach, clients like the Portal can show description
 
 You can clone this repository and build the technote locally if your system has Python 3.11 or later:
 
-.. code-block:: bash
-
 ```sh
 git clone https://github.com/lsst-sqre/sqr-086
 cd sqr-086
