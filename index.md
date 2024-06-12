@@ -6,10 +6,10 @@ This technote describes a system where we implement a linking service that uses 
 This link service, which resides in the Rubin Science Platform (RSP), is called by TAP schema queries.
 In turn, the link service queries Ook, Rubin Observatory's documentation metadata service that indexes the link inventories of documentation sites.
 These link inventories are prepared and included with Sphinx documentation builds using Sphinx extensions provided by the Documenteer package.
-With this standards-based approach, clients like the Portal can show descriptions and links to documentation from their user interfaces.
+With this standards-based approach, clients like the Portal can show descriptions and links to data documentation from their user interfaces.
 ```
 
-## High level overview
+## High-level overview
 
 This overview traces the system's component architecture from the end-user's perspective through to the intention of the documentation author.
 
@@ -19,16 +19,16 @@ This overview traces the system's component architecture from the end-user's per
 
 Consider a Rubin Science Platform user who is working in the Portal to query and view LSST data.[^agnostic]
 The Firefly-based Portal shows information about tables and columns by making queries against the [TAP][tap] schema.
-The LSST TAP schemas are annotated with [DataLink][datalink] service descriptors points to a link service, also hosted in the RSP, that provides links to entities like tables and columns in an LSST data release.
+The LSST TAP schemas are annotated with [DataLink][datalink] service descriptors pointing to link endpoints, also hosted in the RSP, that provide URLs to related entities like table and column descriptions in LSST data release documentation.
 These service descriptors are added to the TAP schema through definition files in [sdm_schemas][sdm_schemas], which is managed through [Felis][felis].
-The service descriptors specify access URLs, including query parameters, to a link endpoint provided by another RSP service.
-In the RSP, the [datalinker][datalinker] Python project provides a link service that can be extended for this application.
-The link endpoint, through the datalinker service, operates in the RSP so that it can be aware of what data is available in that RSP, and can make any last-mile transformations to the links, including adding RSP-specific links.
+The service descriptors specify access URLs, including query parameters, to link endpoints provided by another RSP service.
+In the RSP, the [datalinker][datalinker] Python application provides a link service that can be extended for this application.
+The link endpoints, through the datalinker service, operate in the RSP so that they can be aware of what data is available in that RSP and can make any last-mile transformations to the links, including adding RSP-specific links.
 See [](#datalinker-service).
 
-[^agnostic]: Although we use the Portal as the example, and also as the driving use case, by adopting the IVOA DataLink standard, other VO clients can also get documentation links.
+[^agnostic]: Although we use the Portal as the example, and also as the driving use case, by adopting the IVOA DataLink standard other VO clients can also get documentation links.
 
-Most documentation links will be provided through documentation sites hosted outside the Rubin Science Platform on `lsst.io`, which is managed by the LSST the Docs ({sqr}`006`) static documentation site platform.
+Most documentation links will point to documentation sites hosted outside the Rubin Science Platform on `lsst.io`, which is managed by the LSST the Docs ({sqr}`006`) static documentation site platform.
 So that the link service in the RSP doesn't have to be aware in detail of these documentation sites, and also so that other data facilities can mix in other documentation sources for their RSP deployments, we propose that the link service also acts as a proxy to a link provider that lives closer to the documentation domain.
 
 The [Ook][ook] documentation librarian service, which is hosted in the Roundtable internal services Kubernetes cluster, already indexes Rubin documentation sites.
@@ -52,7 +52,7 @@ To accomplish this, we will build upon the core Sphinx technologies of [domains]
 (rubin-domain)=
 ### Marking up documentation with link anchors
 
-In the documentation source, we will use custom extensions (reStructuredText roles and directives) provided through [Documenteer][Documenteer] to annotate specific pages and sections as documenting a table or column.
+In the documentation source, we will use custom extensions (reStructuredText roles and directives) provided through [Documenteer][Documenteer] to annotate specific pages and sections as documenting a table or column in a data release.
 These Sphinx extensions will be part of a Rubin Observatory [Sphinx *domain*][domain].
 Sphinx domains are collections of directives that allow writers to document specific types of entities and cross reference those.
 Sphinx includes built-in domains for Python, C++, and other programming languages, which is how Sphinx API references are built.
@@ -195,7 +195,7 @@ Besides the `link` field, the response could include a `blobs` field that provid
 
 ### Structure of the entity collections API
 
-A client may need bulk access to links to a collection of entities, without needing to make a large number of HTTP requests.
+A client may need bulk access to links for a collection of entities without needing to make a large number of HTTP requests.
 For example, a client may need all columns in a table, or all tables in a data release.
 For these cases, the collections APIs can provide an array of entities and their links:
 
@@ -204,13 +204,13 @@ GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns
 ```
 
 With a query string syntax, we could let the client get a subset of the collection.
-for example, all columns that start with a prefix:
+For example, all columns that start with a prefix:
 
 ```{code-block}
 GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns?prefix=visit_
 ```
 
-The response includes both a data field and a separate pagination field:
+The response includes both a data object and a separate pagination object:
 
 ```{code-block} json
 {
@@ -247,7 +247,7 @@ This response schema features cursor-based pagination.
 
 #### Including child entities?
 
-Many entities in the [Rubin domain](#rubin-domain) described here are natural hierachical.
+Many entities in the [Rubin domain](#rubin-domain) described here are naturally hierachical.
 A data release contains tables, and those tables contain columns.
 It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entitities in the response for the parent entity).
 If we do this, we should study how other APIs handle pagination in these types of responses.
@@ -263,7 +263,7 @@ There are two parts to the [DataLink][datalink] specification: service descripto
 
 ### Service descriptors for TAP schema documentation
 
-DataLink service descriptors annotate a result with a link endpoints that can be called by the client to get information related to the result.
+DataLink service descriptors annotate a result with metadata about link endpoints that can be called by the client to get information related to the result.
 For a TAP query result, the service descriptor would be embedded in the result's VOTable under a `RESOURCE` element with a `type="meta"` attribute.
 
 ```{note}
