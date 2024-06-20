@@ -1,0 +1,20 @@
+   <RESOURCE type="meta" utype="adhoc:service" name="ColumnDocumentationLinks">
+     <DESCRIPTION>
+       This DataLlink service provides links to documentation
+       about a table's columns.
+     </DESCRIPTION>
+     <PARAM name="standardID" datatype="char" arraysize="*"
+            value="ivo://ivoa.net/std/DataLink#links-1.1" />
+     <PARAM name="accessURL" datatype="char" arraysize="*"
+            value="$baseUrl$/api/datalink/table-column-doc-links" />
+     <PARAM name="contentType" datatype="char" arraysize="*"
+            value="application/x-votable+xml;content=datalink" />
+     <PARAM name="exampleURL" datatype="char" arraysize="*"
+            value="$baseUrl$/api/datalink/table-column-doc-links?ID={table-name}&column={column-name}" />
+     <GROUP name="inputParams">
+       <PARAM name="ID" datatype="char" arraysize="*"
+              value="" ref="primaryID"/>
+       <PARAM name="column" datatype="char" arraysize="*"
+              value=""/>
+     </GROUP>
+   </RESOURCE>
