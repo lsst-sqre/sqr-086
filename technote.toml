@@ -11,7 +11,7 @@ license.id = "CC-BY-4.0"
 
 [technote.status]
 state = "draft"
-note = "Architecture for the Ook link service and the Sphinx-domain based system for annotating documentation is well understood in this draft. The implemenation of a VO linking endpoint still needs design work."
+note = "Architecture for the Ook link service and the Sphinx-domain based system for annotating documentation is well understood in this draft. The implementation of a VO linking endpoint still needs design work."
 
 [[technote.authors]]
 internal_id = "sickj"
