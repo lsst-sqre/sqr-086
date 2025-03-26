@@ -301,7 +301,7 @@ See {numref}`database-schema` for a visualization of the database schema.
 ```{mermaid} database.mmd
 :name: database-schema
 :zoom:
-:caption: Ook database schema that backs the Link Service.
+:caption: Ook database schema that backs the Link Service, specifically related to links to Science Domain Model (SDM) entities.
 ```
 
 ### The links table
@@ -313,8 +313,8 @@ The `type` field is a controlled vocabulary of resource content types, which may
 This field helps clients understand what kind of resource they're linking to.
 
 The `source_collection_title` field is the title of the website the link is part of.
-For example, a links to a schema in the DP1 data release documentation would have a `source_collection_title` of "LSST Data Release 1 Documentation."
-With this generality, any type of link can be stored in this `links` table, whether is is a link to a section in a document, a link to a method in a Python API reference, or a link to a column in a schema browser.
+For example, links to a schema in the DP1 data release documentation would have a `source_collection_title` of "LSST Data Release 1 Documentation."
+With this generality, any type of link can be stored in this `links` table, whether it is a link to a section in a document, a link to a method in a Python API reference, or a link to a column in a schema browser.
 
 ### Link subtypes
 
@@ -332,14 +332,14 @@ To provide links with this context, the database schema includes additional tabl
 For example, the SDM entity links are stored in tables `links_sdm_schemas`, `links_sdm_tables`, and `links_sdm_columns`.
 These tables are related to the parent `links` table through joined-table inheritance.
 
-The link subtype tables provide entity-specific context.
+The link-subtype tables provide entity-specific context.
 For SDM links, the link subtypes have relationships to a separate set of tables that describe the SDM schema, tables, and columns.
 By joining across the `links` table to the subtypes and through to the SDM schema tables, Ook is able to provide links associated with specific SDM schemas, tables, and columns.
 
 ### Modeling domain knowledge in Ook
 
 A by-product of this work is that Ook now has a structured model of the domain entities that it indexes.
-Here's Ook's databases contain the Science Data Model Schemas as ingested from the source GitHub repository.
+For example, Ook's databases contain the Science Data Model Schemas as ingested from the source GitHub repository (see `sdm_schemas`, `sdm_tables`, and `sdm_columns` in {numref}`database-schema`).
 This information can have interesting applications beyond the links API by providing a structured and accessible source of truth for a broad set of domains across Rubin Observatory.
 For example, documentation discussing the SDM could have dynamic references to the SDM data in Ook to ensure that their documentation is always up-to-date with the latest schema.
 This concept is discussed in [SQR-087 Structured information service: preliminary notes](https://sqr-087.lsst.io/).
