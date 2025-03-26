@@ -99,10 +99,12 @@ We will use that API in the [Ook link service](#ook-link-service).
 (ook-link-service)=
 ## The Ook links service
 
-[Ook][Ook] is an existing SQuaRE service that serves as a documentation librarian.
-Ook's existing role is to index documents and populate the Algolia full-text search database that powers the Rubin Observatory documentation search at www.lsst.io.
-We propose to extend Ook to also index the link inventories (generally speaking the `objects.inv` Intersphinx inventory files).
+[Ook][Ook] is an existing SQuaRE application that serves as a documentation librarian.
+Ook's established role is to index documents and populate the Algolia full-text search database that powers the Rubin Observatory documentation search at www.lsst.io.
+We propose to extend Ook to also index link inventories (for example the `objects.inv` Intersphinx inventory files of Sphinx projects, but generally any relevant and linkable documentation or information source).
 The Ook link service would sync these inventories into a Postgres database and then provide a REST API for querying the inventories.
+
+See {ref}`ook-links-api` discussion of the web API and {ref}`ook-database-model` for the database modeling.
 
 ```{rst-class} technote-wide-content
 ```
@@ -126,6 +128,14 @@ flowchart LR
   service --> db
 ```
 
+Internally, the Ook link service would follow a process like this:
+
+1. Based on a manual trigger, or Kafka message from the LTD documentation publishing system, Ook would begin an ingest of the project's link inventory. This trigger is similar to how Ook's Algolia indexing for a documentation project is triggered.
+2. Ook's interface to Sphinx `objects.inv` file format downloads and reads the inventory file.
+3. The Ook link service upserts the entities from the inventory into a Postgres database. Ook maintains the schemas for these object inventory tables given that the Ook API also needs is aware of what Sphinx domains it publishes.
+4. The Ook link service provides a REST API for querying the link inventory.
+
+(ook-links-api)=
 ## The Ook links API
 
 Ook's link API would be structured around the different Sphinx domains, including the Rubin domain for linking to Rubin data products and other entities.
@@ -140,13 +150,6 @@ With the same technology, we can provide a generic API for other Sphinx domains:
 ```{code-block}
 GET /ook/links/domain/python/module/lsst.afw.table
 ```
-
-Internally, the Ook link service would follow a process like this:
-
-1. Based on a manual trigger, or Kafka message from the LTD documentation publishing system, Ook would trigger an update of the project's link inventory. This trigger is similar to how Ook's Algolia indexing for a documentation project is triggered.
-2. Ook interface to Sphinx's `objects.inv` file format downloads and read the inventory file.
-3. The Ook link service upserts the entities from the inventory into a Postgres database. Ook maintains the schemas for these object inventory tables given that the Ook API also needs is aware of what Sphinx domains it publishes.
-4. The Ook link service provides a REST API for querying the link inventory.
 
 ### Discovery and URL templating
 
@@ -262,6 +265,7 @@ A data release contains tables, and those tables contain columns.
 It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entities in the response for the parent entity).
 If we do this, we should study how other APIs handle pagination in these types of responses.
 
+(ook-database-model)=
 ## Ook's database model
 
 Ook's [link service](#ook-link-service) is backed by a Postgres datastore.
@@ -350,7 +354,7 @@ Questions:
 
 The link endpoints, which are outlined by the service descriptors, respond with VOTables of documentation links.
 
-The link endpoints derive their data from the [Ook link service endpoints](#ook-link-service), and in fact the Ook link API generally mirrors the datalink endpoints for entity documentation links.
+The link endpoints derive their data from the {ref}`Ook links API <ook-links-api>`, and in fact the Ook links API generally mirrors the datalink endpoints for entity documentation links.
 The differences are that the datalink endpoint requests are authenticated with RSP credentials and that responses are VOTables.
 The VO datalink service should ideally cache responses from the Ook link service since the responses are generally stable and apply to all RSP users.
 
