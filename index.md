@@ -138,74 +138,81 @@ Internally, the Ook link service would follow a process like this:
 (ook-links-api)=
 ## The Ook links API
 
-Ook's link API would be structured around the different Sphinx domains, including the Rubin domain for linking to Rubin data products and other entities.
-For example, to get the link to a column's documentation:
+Ook's link API would be structured around the different information domains.
+Some of these domains would map directly to the Sphinx/Intersphinx domains such as the Rubin domain for linking to Rubin data products and other entities.
+For example, to get the links to a Science Data Model (SDM) column's documentation:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dp02/tables/visit/columns/physical_filter
+:class: technote-wide-content
+GET /ook/links/domains/sdm/schemas/dp02_dc2_catalogs/tables/Visit/columns/physical_filter
 ```
 
 With the same technology, we can provide a generic API for other Sphinx domains:
 
 ```{code-block}
-GET /ook/links/domain/python/module/lsst.afw.table
+:class: technote-wide-content
+GET /ook/links/domains/python/modules/lsst.afw.table
 ```
 
 ### Discovery and URL templating
 
-The root endpoints for each link domain would provide templated URLs for the different entities:
+The root endpoints for each link domain would provide templated URLs for the different link endpoints, categorized around links to specific entities, or a collection of entities:
 
 ```{code-block}
-GET /ook/links/domain/rubin
+GET /ook/links/domains/sdm
 ```
 
 ```{code-block} json
+:class: technote-wide-content
+
 {
   "entities": {
-    "data-release": "/ook/links/domain/rubin/dr/{release}",
-    "table": "/ook/links/domain/rubin/dr/{release}/tables/{table}",
-    "column": "/ook/links/domain/rubin/dr/{release}/tables/{table}/columns/{column}"
+    "schema": "/ook/links/domains/sdm/schemas/{schema}",
+    "table": "/ook/links/domains/sdm/schemas/{schema}/tables/{table}",
+    "column": "/ook/links/domains/sdm/schemas/{schema}/tables/{table}/columns/{column}"
   },
   "collections": {
-    "data-releases": "/ook/links/domain/rubin/dr",
-    "tables": "/ook/links/domain/rubin/dr/{release}/tables",
-    "columns": "/ook/links/domain/rubin/dr/{release}/tables/{table}/columns"
+    "schemas": "/ook/links/domains/sdm/schemas",
+    "tables": "/ook/links/domains/sdm/schemas/{schema}/tables",
+    "columns": "/ook/links/domains/sdm/schemas/{schema}/tables/{table}/columns"
   }
 }
 ```
 
 So long as the names for the entities and URL template variables are well known, this root endpoint can provide a discovery and auto-configuration layer for clients.
 
-### Structure of the entity link API
+(ook-entity-link)=
+### Structure of an entity link API
 
-The entity linking APIs let a client get the links for a specific entity based on the URL structure.
+The entity linking APIs let a client get the links for a specific entity based on the URL structure:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns/physical_filter
+:class: technote-wide-content
+
+GET /ook/links/domains/sdm/schemas/dr1/tables/Visit/columns/physical_filter
 ```
 
-The JSON response for a specific entity would include, at a minimum, the URL to the documentation page and anchor for that entity.
+The JSON response for a specific entity is an array of links:
 
 ```{code-block} json
-{
-  "links": [
-    {
-      "url": "https://dr1.lsst.io/reference/tables/visit#physical_filter",
-      "kind": "documentation",
-      "source_title": "Data Release 1 Documentation"
-    }
-  ]
-}
+:class: technote-wide-content
+
+[
+  {
+    "url": "https://dr1.lsst.io/reference/tables/Visit#physical_filter",
+    "type": "schema_browser",
+    "source_title": "physical_filter column",
+    "source_collection_title": "Data Release 1 Documentation"
+  }
+]
 ```
 
-These link responses should anticipate that multiple links might be associated with a single entity.
+The link responses anticipates that multiple links might be associated with a single entity.
 For one, the "pull" nature of the Ook link service means that multiple documentation sites might claim to document the same entity.
 To help clients distinguish between multiple links, Ook can provide some context for the links (whether it is a documentation site, or a document/technote, or a tutorial notebook, etc.).
 As well, Ook can provide the name of the site that hosts the link.
 
-The response schema should also anticipate that some entities might not just be related to deep links into documentation, but might also be related to images or other datasets.
-Besides the `link` field, the response could include a `blobs` field that provides URLs that a client can follow to download the data.
-
+(ook-collection-link-api)=
 ### Structure of the entity collections API
 
 A client may need bulk access to links for a collection of entities without needing to make a large number of HTTP requests.
@@ -213,57 +220,74 @@ For example, a client may need all columns in a table, or all tables in a data r
 For these cases, the collections APIs can provide an array of entities and their links:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns
+:class: technote-wide-content
+
+GET /ook/links/domains/sdm/schemas/dr1/tables/Object/columns
 ```
 
 With a query string syntax, we could let the client get a subset of the collection.
 For example, all columns that start with a prefix:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns?prefix=visit_
+:class: technote-wide-content
+
+GET /ook/links/domains/sdm/schemas/dr1/tables/Object/columns?prefix=shape_
 ```
 
-The response includes both a data object and a separate pagination object:
+The response for collections is an array of entities, and each entity has an array of links like in the the {ref}`entity link API <ook-entity-link>`:
 
 ```{code-block} json
-{
-  "data": [
-    {
-      "name": "physical_filter",
-      "links": [
-        {
-          "url": "https://dr1.lsst.io/reference/tables/visit#physical_filter",
-          "kind": "documentation",
-          "source_title": "Data Release 1 Documentation"
-        }
-      ]
-    },
-    {
-      "name": "visit_id",
-      "links": [
-        {
-          "url": "https://dr1.lsst.io/reference/tables/visit#visit_id",
-          "kind": "documentation",
-          "source_title": "Data Release 1 Documentation"
-        }
-      ]
-    }
-  ],
-  "pagination": {
-    "previous": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?before=physical_filter",
-    "next": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?after=visit_id"
-  }
-}
+:class: technote-wide-content
+
+[
+  {
+    "schema_name": "dr1",
+    "table_name": "Object",
+    "column_name": "shape_flag",
+    "links": [
+      {
+        "url": "https://dr1.lsst.io/reference/tables/Object#shape_flag",
+        "type": "schema_browser",
+        "source_title": "shape_flag column",
+        "source_collection_title": "Data Release 1 Documentation"
+      }
+    ]
+  },
+  {
+    "schema_name": "dr1",
+    "table_name": "Object",
+    "column_name": "shape_xx",
+    "links": [
+      {
+        "url": "https://dr1.lsst.io/reference/tables/Object#shape_xx",
+        "type": "schema_browser",
+        "source_title": "shape_xx column",
+        "source_collection_title": "Data Release 1 Documentation"
+      }
+    ]
+  },
+  {
+    "schema_name": "dr1",
+    "table_name": "Object",
+    "column_name": "shape_xy",
+    "links": [
+      {
+        "url": "https://dr1.lsst.io/reference/tables/Object#shape_xy",
+        "type": "schema_browser",
+        "source_title": "shape_xy column",
+        "source_collection_title": "Data Release 1 Documentation"
+      }
+    ]
+  },
+]
 ```
 
-This response schema features cursor-based pagination.
-
-#### Including child entities?
-
+```{note}
 Many entities in the [Rubin domain](#rubin-domain) described here are naturally hierarchical.
-A data release contains tables, and those tables contain columns.
+A data release's schema contains tables, and those tables contain columns.
 It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entities in the response for the parent entity).
 If we do this, we should study how other APIs handle pagination in these types of responses.
+```
 
 (ook-database-model)=
 ## Ook's database model
