@@ -207,7 +207,7 @@ The JSON response for a specific entity is an array of links:
 ]
 ```
 
-The link responses anticipates that multiple links might be associated with a single entity.
+The link responses anticipate that multiple links might be associated with a single entity.
 For one, the "pull" nature of the Ook link service means that multiple documentation sites might claim to document the same entity.
 To help clients distinguish between multiple links, Ook can provide some context for the links (whether it is a documentation site, or a document/technote, or a tutorial notebook, etc.).
 As well, Ook can provide the name of the site that hosts the link.
