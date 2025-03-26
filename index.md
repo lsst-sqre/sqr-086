@@ -322,6 +322,8 @@ The Ook Links API demands that links have a structured context.
 For example, consider the SDM columns links endpoint:
 
 ```{code-block}
+:class: technote-wide-content
+
 GET /ook/links/domains/sdm/schemas/:schema/tables/:table/columns/:column
 ```
 
@@ -363,6 +365,7 @@ For a TAP schema query result, is this also the case?
 For the RSP, datalink service descriptors are built from templates hosted in the [sdm_schemas][sdm_schemas] repository.
 
 ```{literalinclude} service-descriptor-example.xml
+:class: technote-wide-content
 :language: xml
 ```
 
