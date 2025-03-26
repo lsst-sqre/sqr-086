@@ -133,7 +133,7 @@ GET /ook/links/domain/python/module/lsst.afw.table
 
 Internally, the Ook link service would follow a process like this:
 
-1. Based on a manual trigger, or Kafka message from the LTD documentation publishing system, Ook would trigger an update of the project's link inventory. This trigger is similar to how Ook's Algolia indexding for a documentation project is triggered.
+1. Based on a manual trigger, or Kafka message from the LTD documentation publishing system, Ook would trigger an update of the project's link inventory. This trigger is similar to how Ook's Algolia indexing for a documentation project is triggered.
 2. Ook interface to Sphinx's `objects.inv` file format downloads and read the inventory file.
 3. The Ook link service upserts the entities from the inventory into a Postgres database. Ook maintains the schemas for these object inventory tables given that the Ook API also needs is aware of what Sphinx domains it publishes.
 4. The Ook link service provides a REST API for querying the link inventory.
@@ -247,9 +247,9 @@ This response schema features cursor-based pagination.
 
 #### Including child entities?
 
-Many entities in the [Rubin domain](#rubin-domain) described here are naturally hierachical.
+Many entities in the [Rubin domain](#rubin-domain) described here are naturally hierarchical.
 A data release contains tables, and those tables contain columns.
-It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entitities in the response for the parent entity).
+It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entities in the response for the parent entity).
 If we do this, we should study how other APIs handle pagination in these types of responses.
 
 (datalinker-service)=
