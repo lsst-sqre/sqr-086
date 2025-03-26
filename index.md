@@ -13,6 +13,9 @@ With this standards-based approach, clients like the Portal can show description
 
 This overview traces the system's component architecture from the end-user's perspective through to the intention of the documentation author.
 
+```{rst-class} technote-wide-content
+```
+
 ```{diagrams} overview_diagram.py
 :filename: overview-diagram.png
 ```
@@ -94,14 +97,21 @@ Although the `objects.inv` format is somewhat opaque, Sphinx provides a Python A
 We will use that API in the [Ook link service](#ook-link-service).
 
 (ook-link-service)=
-## The Ook link service
+## The Ook links service
 
-[Ook][Ook] is an existing SQuaRE service that serves as a documentation librarian.
-Ook's existing role is to index documents and populate the Algolia full-text search database that powers the Rubin Observatory documentation search at www.lsst.io.
-We propose to extend Ook to also index the link inventories (generally speaking the `objects.inv` Intersphinx inventory files).
+[Ook][Ook] is an existing SQuaRE application that serves as a documentation librarian.
+Ook's established role is to index documents and populate the Algolia full-text search database that powers the Rubin Observatory documentation search at www.lsst.io.
+We propose to extend Ook to also index link inventories (for example the `objects.inv` Intersphinx inventory files of Sphinx projects, but generally any relevant and linkable documentation or information source).
 The Ook link service would sync these inventories into a Postgres database and then provide a REST API for querying the inventories.
 
+See {ref}`ook-links-api` discussion of the web API and {ref}`ook-database-model` for the database modeling.
+
+```{rst-class} technote-wide-content
+```
+
 ```{mermaid}
+:zoom:
+
 flowchart LR
   objadapter[Object Inventory Adapter]
   objects["dr1.lsst.io/objects.inv"]
@@ -118,81 +128,91 @@ flowchart LR
   service --> db
 ```
 
-Ook's link API would be structured around the different Sphinx domains, including the Rubin domain for linking to Rubin data products and other entities.
-For example, to get the link to a column's documentation:
+Internally, the Ook link service would follow a process like this:
+
+1. Based on a manual trigger, or Kafka message from the LTD documentation publishing system, Ook would begin an ingest of the project's link inventory. This trigger is similar to how Ook's Algolia indexing for a documentation project is triggered.
+2. Ook's interface to Sphinx `objects.inv` file format downloads and reads the inventory file.
+3. The Ook link service upserts the entities from the inventory into a Postgres database. Ook maintains the schemas for these object inventory tables given that the Ook API also needs is aware of what Sphinx domains it publishes.
+4. The Ook link service provides a REST API for querying the link inventory.
+
+(ook-links-api)=
+## The Ook links API
+
+Ook's link API would be structured around the different information domains.
+Some of these domains would map directly to the Sphinx/Intersphinx domains such as the Rubin domain for linking to Rubin data products and other entities.
+For example, to get the links to a Science Data Model (SDM) column's documentation:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dp02/tables/visit/columns/physical_filter
+:class: technote-wide-content
+GET /ook/links/domains/sdm/schemas/dp02_dc2_catalogs/tables/Visit/columns/physical_filter
 ```
 
 With the same technology, we can provide a generic API for other Sphinx domains:
 
 ```{code-block}
-GET /ook/links/domain/python/module/lsst.afw.table
+:class: technote-wide-content
+GET /ook/links/domains/python/modules/lsst.afw.table
 ```
-
-Internally, the Ook link service would follow a process like this:
-
-1. Based on a manual trigger, or Kafka message from the LTD documentation publishing system, Ook would trigger an update of the project's link inventory. This trigger is similar to how Ook's Algolia indexding for a documentation project is triggered.
-2. Ook interface to Sphinx's `objects.inv` file format downloads and read the inventory file.
-3. The Ook link service upserts the entities from the inventory into a Postgres database. Ook maintains the schemas for these object inventory tables given that the Ook API also needs is aware of what Sphinx domains it publishes.
-4. The Ook link service provides a REST API for querying the link inventory.
 
 ### Discovery and URL templating
 
-The root endpoints for each link domain would provide templated URLs for the different entities:
+The root endpoints for each link domain would provide templated URLs for the different link endpoints, categorized around links to specific entities, or a collection of entities:
 
 ```{code-block}
-GET /ook/links/domain/rubin
+GET /ook/links/domains/sdm
 ```
 
 ```{code-block} json
+:class: technote-wide-content
+
 {
   "entities": {
-    "data-release": "/ook/links/domain/rubin/dr/{release}",
-    "table": "/ook/links/domain/rubin/dr/{release}/tables/{table}",
-    "column": "/ook/links/domain/rubin/dr/{release}/tables/{table}/columns/{column}"
+    "schema": "/ook/links/domains/sdm/schemas/{schema}",
+    "table": "/ook/links/domains/sdm/schemas/{schema}/tables/{table}",
+    "column": "/ook/links/domains/sdm/schemas/{schema}/tables/{table}/columns/{column}"
   },
   "collections": {
-    "data-releases": "/ook/links/domain/rubin/dr",
-    "tables": "/ook/links/domain/rubin/dr/{release}/tables",
-    "columns": "/ook/links/domain/rubin/dr/{release}/tables/{table}/columns"
+    "schemas": "/ook/links/domains/sdm/schemas",
+    "tables": "/ook/links/domains/sdm/schemas/{schema}/tables",
+    "columns": "/ook/links/domains/sdm/schemas/{schema}/tables/{table}/columns"
   }
 }
 ```
 
 So long as the names for the entities and URL template variables are well known, this root endpoint can provide a discovery and auto-configuration layer for clients.
 
-### Structure of the entity link API
+(ook-entity-link)=
+### Structure of an entity link API
 
-The entity linking APIs let a client get the links for a specific entity based on the URL structure.
+The entity linking APIs let a client get the links for a specific entity based on the URL structure:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns/physical_filter
+:class: technote-wide-content
+
+GET /ook/links/domains/sdm/schemas/dr1/tables/Visit/columns/physical_filter
 ```
 
-The JSON response for a specific entity would include, at a minimum, the URL to the documentation page and anchor for that entity.
+The JSON response for a specific entity is an array of links:
 
 ```{code-block} json
-{
-  "links": [
-    {
-      "url": "https://dr1.lsst.io/reference/tables/visit#physical_filter",
-      "kind": "documentation",
-      "source_title": "Data Release 1 Documentation"
-    }
-  ]
-}
+:class: technote-wide-content
+
+[
+  {
+    "url": "https://dr1.lsst.io/reference/tables/Visit#physical_filter",
+    "type": "schema_browser",
+    "source_title": "physical_filter column",
+    "source_collection_title": "Data Release 1 Documentation"
+  }
+]
 ```
 
-These link responses should anticipate that multiple links might be associated with a single entity.
+The link responses anticipate that multiple links might be associated with a single entity.
 For one, the "pull" nature of the Ook link service means that multiple documentation sites might claim to document the same entity.
 To help clients distinguish between multiple links, Ook can provide some context for the links (whether it is a documentation site, or a document/technote, or a tutorial notebook, etc.).
 As well, Ook can provide the name of the site that hosts the link.
 
-The response schema should also anticipate that some entities might not just be related to deep links into documentation, but might also be related to images or other datasets.
-Besides the `link` field, the response could include a `blobs` field that provides URLs that a client can follow to download the data.
-
+(ook-collection-link-api)=
 ### Structure of the entity collections API
 
 A client may need bulk access to links for a collection of entities without needing to make a large number of HTTP requests.
@@ -200,60 +220,132 @@ For example, a client may need all columns in a table, or all tables in a data r
 For these cases, the collections APIs can provide an array of entities and their links:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns
+:class: technote-wide-content
+
+GET /ook/links/domains/sdm/schemas/dr1/tables/Object/columns
 ```
 
 With a query string syntax, we could let the client get a subset of the collection.
 For example, all columns that start with a prefix:
 
 ```{code-block}
-GET /ook/links/domain/rubin/dr/dr1/tables/visit/columns?prefix=visit_
+:class: technote-wide-content
+
+GET /ook/links/domains/sdm/schemas/dr1/tables/Object/columns?prefix=shape_
 ```
 
-The response includes both a data object and a separate pagination object:
+The response for collections is an array of entities, and each entity has an array of links like in the the {ref}`entity link API <ook-entity-link>`:
 
 ```{code-block} json
-{
-  "data": [
-    {
-      "name": "physical_filter",
-      "links": [
-        {
-          "url": "https://dr1.lsst.io/reference/tables/visit#physical_filter",
-          "kind": "documentation",
-          "source_title": "Data Release 1 Documentation"
-        }
-      ]
-    },
-    {
-      "name": "visit_id",
-      "links": [
-        {
-          "url": "https://dr1.lsst.io/reference/tables/visit#visit_id",
-          "kind": "documentation",
-          "source_title": "Data Release 1 Documentation"
-        }
-      ]
-    }
-  ],
-  "pagination": {
-    "previous": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?before=physical_filter",
-    "next": "/ook/links/domain/rubin/dr/dr1/tables/visit/columns?after=visit_id"
-  }
-}
+:class: technote-wide-content
+
+[
+  {
+    "schema_name": "dr1",
+    "table_name": "Object",
+    "column_name": "shape_flag",
+    "links": [
+      {
+        "url": "https://dr1.lsst.io/reference/tables/Object#shape_flag",
+        "type": "schema_browser",
+        "source_title": "shape_flag column",
+        "source_collection_title": "Data Release 1 Documentation"
+      }
+    ]
+  },
+  {
+    "schema_name": "dr1",
+    "table_name": "Object",
+    "column_name": "shape_xx",
+    "links": [
+      {
+        "url": "https://dr1.lsst.io/reference/tables/Object#shape_xx",
+        "type": "schema_browser",
+        "source_title": "shape_xx column",
+        "source_collection_title": "Data Release 1 Documentation"
+      }
+    ]
+  },
+  {
+    "schema_name": "dr1",
+    "table_name": "Object",
+    "column_name": "shape_xy",
+    "links": [
+      {
+        "url": "https://dr1.lsst.io/reference/tables/Object#shape_xy",
+        "type": "schema_browser",
+        "source_title": "shape_xy column",
+        "source_collection_title": "Data Release 1 Documentation"
+      }
+    ]
+  },
+]
 ```
 
-This response schema features cursor-based pagination.
-
-#### Including child entities?
-
-Many entities in the [Rubin domain](#rubin-domain) described here are naturally hierachical.
-A data release contains tables, and those tables contain columns.
-It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entitities in the response for the parent entity).
+```{note}
+Many entities in the [Rubin domain](#rubin-domain) described here are naturally hierarchical.
+A data release's schema contains tables, and those tables contain columns.
+It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entities in the response for the parent entity).
 If we do this, we should study how other APIs handle pagination in these types of responses.
+```
+
+(ook-database-model)=
+## Ook's database model
+
+Ook's [link service](#ook-link-service) is backed by a Postgres datastore.
+See {numref}`database-schema` for a visualization of the database schema.
+
+```{rst-class} technote-wide-content
+```
+
+```{mermaid} database.mmd
+:name: database-schema
+:zoom:
+:caption: Ook database schema that backs the Link Service, specifically related to links to Science Domain Model (SDM) entities.
+```
+
+### The links table
+
+All links are stored in a common table, `links`.
+These links have a website URL, a title, a type, and information about the documentation collection that they're part of.
+
+The `type` field is a controlled vocabulary of resource content types, which may include `guide`, `tutorial`, `schema_browser`, `document`, and so on.
+This field helps clients understand what kind of resource they're linking to.
+
+The `source_collection_title` field is the title of the website the link is part of.
+For example, links to a schema in the DP1 data release documentation would have a `source_collection_title` of "LSST Data Release 1 Documentation."
+With this generality, any type of link can be stored in this `links` table, whether it is a link to a section in a document, a link to a method in a Python API reference, or a link to a column in a schema browser.
+
+### Link subtypes
+
+The Ook Links API demands that links have a structured context.
+For example, consider the SDM columns links endpoint:
+
+```{code-block}
+:class: technote-wide-content
+
+GET /ook/links/domains/sdm/schemas/:schema/tables/:table/columns/:column
+```
+
+This endpoint requires that links are contextually associated with a specific SDM schema, table, and column.
+To provide links with this context, the database schema includes additional tables for each annotating the domain entity associated with the links.
+For example, the SDM entity links are stored in tables `links_sdm_schemas`, `links_sdm_tables`, and `links_sdm_columns`.
+These tables are related to the parent `links` table through joined-table inheritance.
+
+The link-subtype tables provide entity-specific context.
+For SDM links, the link subtypes have relationships to a separate set of tables that describe the SDM schema, tables, and columns.
+By joining across the `links` table to the subtypes and through to the SDM schema tables, Ook is able to provide links associated with specific SDM schemas, tables, and columns.
+
+### Modeling domain knowledge in Ook
+
+A by-product of this work is that Ook now has a structured model of the domain entities that it indexes.
+For example, Ook's databases contain the Science Data Model Schemas as ingested from the source GitHub repository (see `sdm_schemas`, `sdm_tables`, and `sdm_columns` in {numref}`database-schema`).
+This information can have interesting applications beyond the links API by providing a structured and accessible source of truth for a broad set of domains across Rubin Observatory.
+For example, documentation discussing the SDM could have dynamic references to the SDM data in Ook to ensure that their documentation is always up-to-date with the latest schema.
+This concept is discussed in [SQR-087 Structured information service: preliminary notes](https://sqr-087.lsst.io/).
 
 (datalinker-service)=
-## Implementation of a VO data linking endpoint
+## VO documentation linking
 
 From the Rubin Science Platform, clients won't directly query the Ook link service.
 Instead, they will query a VO data linking service that uses the Ook link service as a backend.
@@ -273,6 +365,7 @@ For a TAP schema query result, is this also the case?
 For the RSP, datalink service descriptors are built from templates hosted in the [sdm_schemas][sdm_schemas] repository.
 
 ```{literalinclude} service-descriptor-example.xml
+:class: technote-wide-content
 :language: xml
 ```
 
@@ -288,7 +381,7 @@ Questions:
 
 The link endpoints, which are outlined by the service descriptors, respond with VOTables of documentation links.
 
-The link endpoints derive their data from the [Ook link service endpoints](#ook-link-service), and in fact the Ook link API generally mirrors the datalink endpoints for entity documentation links.
+The link endpoints derive their data from the {ref}`Ook links API <ook-links-api>`, and in fact the Ook links API generally mirrors the datalink endpoints for entity documentation links.
 The differences are that the datalink endpoint requests are authenticated with RSP credentials and that responses are VOTables.
 The VO datalink service should ideally cache responses from the Ook link service since the responses are generally stable and apply to all RSP users.
 

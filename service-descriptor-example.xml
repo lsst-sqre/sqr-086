@@ -1,6 +1,6 @@
    <RESOURCE type="meta" utype="adhoc:service" name="ColumnDocumentationLinks">
      <DESCRIPTION>
-       This DataLlink service provides links to documentation
+       This DataLink service provides links to documentation
        about a table's columns.
      </DESCRIPTION>
      <PARAM name="standardID" datatype="char" arraysize="*"
