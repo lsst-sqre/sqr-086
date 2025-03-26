@@ -13,6 +13,9 @@ With this standards-based approach, clients like the Portal can show description
 
 This overview traces the system's component architecture from the end-user's perspective through to the intention of the documentation author.
 
+```{rst-class} technote-wide-content
+```
+
 ```{diagrams} overview_diagram.py
 :filename: overview-diagram.png
 ```
@@ -94,14 +97,19 @@ Although the `objects.inv` format is somewhat opaque, Sphinx provides a Python A
 We will use that API in the [Ook link service](#ook-link-service).
 
 (ook-link-service)=
-## The Ook link service
+## The Ook links service
 
 [Ook][Ook] is an existing SQuaRE service that serves as a documentation librarian.
 Ook's existing role is to index documents and populate the Algolia full-text search database that powers the Rubin Observatory documentation search at www.lsst.io.
 We propose to extend Ook to also index the link inventories (generally speaking the `objects.inv` Intersphinx inventory files).
 The Ook link service would sync these inventories into a Postgres database and then provide a REST API for querying the inventories.
 
+```{rst-class} technote-wide-content
+```
+
 ```{mermaid}
+:zoom:
+
 flowchart LR
   objadapter[Object Inventory Adapter]
   objects["dr1.lsst.io/objects.inv"]
@@ -117,6 +125,8 @@ flowchart LR
   documenteer --> objects
   service --> db
 ```
+
+## The Ook links API
 
 Ook's link API would be structured around the different Sphinx domains, including the Rubin domain for linking to Rubin data products and other entities.
 For example, to get the link to a column's documentation:
@@ -252,8 +262,60 @@ A data release contains tables, and those tables contain columns.
 It could be useful to include child entities in the response for a parent entity (essentially embedding the collections API for the child entities in the response for the parent entity).
 If we do this, we should study how other APIs handle pagination in these types of responses.
 
+## Ook's database model
+
+Ook's [link service](#ook-link-service) is backed by a Postgres datastore.
+See {numref}`database-schema` for a visualization of the database schema.
+
+```{rst-class} technote-wide-content
+```
+
+```{mermaid} database.mmd
+:name: database-schema
+:zoom:
+:caption: Ook database schema that backs the Link Service.
+```
+
+### The links table
+
+All links are stored in a common table, `links`.
+These links have a website URL, a title, a type, and information about the documentation collection that they're part of.
+
+The `type` field is a controlled vocabulary of resource content types, which may include `guide`, `tutorial`, `schema_browser`, `document`, and so on.
+This field helps clients understand what kind of resource they're linking to.
+
+The `source_collection_title` field is the title of the website the link is part of.
+For example, a links to a schema in the DP1 data release documentation would have a `source_collection_title` of "LSST Data Release 1 Documentation."
+With this generality, any type of link can be stored in this `links` table, whether is is a link to a section in a document, a link to a method in a Python API reference, or a link to a column in a schema browser.
+
+### Link subtypes
+
+The Ook Links API demands that links have a structured context.
+For example, consider the SDM columns links endpoint:
+
+```{code-block}
+GET /ook/links/domains/sdm/schemas/:schema/tables/:table/columns/:column
+```
+
+This endpoint requires that links are contextually associated with a specific SDM schema, table, and column.
+To provide links with this context, the database schema includes additional tables for each annotating the domain entity associated with the links.
+For example, the SDM entity links are stored in tables `links_sdm_schemas`, `links_sdm_tables`, and `links_sdm_columns`.
+These tables are related to the parent `links` table through joined-table inheritance.
+
+The link subtype tables provide entity-specific context.
+For SDM links, the link subtypes have relationships to a separate set of tables that describe the SDM schema, tables, and columns.
+By joining across the `links` table to the subtypes and through to the SDM schema tables, Ook is able to provide links associated with specific SDM schemas, tables, and columns.
+
+### Modeling domain knowledge in Ook
+
+A by-product of this work is that Ook now has a structured model of the domain entities that it indexes.
+Here's Ook's databases contain the Science Data Model Schemas as ingested from the source GitHub repository.
+This information can have interesting applications beyond the links API by providing a structured and accessible source of truth for a broad set of domains across Rubin Observatory.
+For example, documentation discussing the SDM could have dynamic references to the SDM data in Ook to ensure that their documentation is always up-to-date with the latest schema.
+This concept is discussed in [SQR-087 Structured information service: preliminary notes](https://sqr-087.lsst.io/).
+
 (datalinker-service)=
-## Implementation of a VO data linking endpoint
+## VO documentation linking
 
 From the Rubin Science Platform, clients won't directly query the Ook link service.
 Instead, they will query a VO data linking service that uses the Ook link service as a backend.

@@ -1,0 +1,69 @@
+erDiagram
+    sdm_schemas ||--o{ sdm_tables : contains
+    sdm_tables ||--o{ sdm_columns : contains
+    sdm_schemas ||--o{ links_sdm_schemas : has
+    sdm_tables ||--o{ links_sdm_tables : has
+    sdm_columns ||--o{ links_sdm_columns : has
+    links ||--|| links_sdm_schemas : inherits
+    links ||--|| links_sdm_tables : inherits
+    links ||--|| links_sdm_columns : inherits
+
+    sdm_schemas {
+        BigInteger id PK
+        string name
+        string felis_id
+        string description
+        string github_owner
+        string github_repo
+        string github_ref
+        string github_path
+        datetime date_updated
+    }
+
+    sdm_tables {
+        BigInteger id PK
+        BigInteger schema_id FK
+        string name
+        string felis_id
+        string description
+        BigInteger tap_table_index
+        datetime date_updated
+    }
+
+    sdm_columns {
+        BigInteger id PK
+        BigInteger table_id FK
+        string name
+        string felis_id
+        string description
+        string datatype
+        string ivoa_ucd
+        string ivoa_unit
+        BigInteger tap_column_index
+        datetime date_updated
+    }
+
+    links {
+        BigInteger id PK
+        string type
+        string html_url
+        string source_type
+        string source_title
+        string source_collection_title
+        datetime date_updated
+    }
+
+    links_sdm_schemas {
+        BigInteger id PK,FK
+        BigInteger schema_id FK
+    }
+
+    links_sdm_tables {
+        BigInteger id PK,FK
+        BigInteger table_id FK
+    }
+
+    links_sdm_columns {
+        BigInteger id PK,FK
+        BigInteger column_id FK
+    }
