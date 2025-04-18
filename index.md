@@ -380,13 +380,15 @@ Per typical VO conventions, the `table`[^tablenaming] and `column` names are pas
 
 [^tablenaming]: In VO, the table name is unique and therefore VO doesn't have the concept of a separate schema name, although the Rubin SDM does. Ook follows the Rubin SDM convention of a schema/table/column hierarchy, but hoverdrive presents the VO convention. Hoverdrive adapts the two conventions, knowing that in the Rubin SDM, VO tables names are formatted as `schema_name.table_name` (e.g., `dr1.Object`).
 
-```{note}
-The VO standard allows query parameter to be repeated to indicate a list of values.
-We need to check if FastAPI supports this.
+To get links in bulk, the VO standard allows query parameters to be repeated to indicate a list of values.
+For example, to get links for the `Visit` and `Object` tables:
+
+```{code-block}
+GET /api/hoverdrive/table-docs-links?table=dr1.Visit&table=dr1.Object
 ```
 
 The hoverdrive endpoints derive their data from the {ref}`Ook links API <ook-links-api>`.
-This data may be cached in the hoverdrive service to improve performance.
+These data may be cached in the hoverdrive service to improve performance.
 
 #### VOTable response
 
