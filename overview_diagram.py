@@ -2,12 +2,19 @@ import sys
 
 from diagrams import Cluster, Diagram
 from diagrams.k8s.compute import Deployment
+from diagrams.onprem.client import Users
 from diagrams.programming.language import Python
 from diagrams.saas.cdn import Fastly
 
-with Diagram("", filename=sys.argv[1], show=sys.argv[2].lower() == "true"):
+with Diagram(
+    "",
+    filename=sys.argv[1],
+    show=sys.argv[2].lower() == "true",
+    direction="BT",
+    curvestyle="curved",
+):
     with Cluster("Rubin Science Platform"):
-        datalinker = Deployment("datalinker")
+        hoverdrive = Deployment("hoverdrive")
         portal = Deployment("portal")
         tap = Deployment("tap")
 
@@ -22,7 +29,8 @@ with Diagram("", filename=sys.argv[1], show=sys.argv[2].lower() == "true"):
 
     documenteer >> dr1
     dr1 >> ook
-    datalinker << ook
+    hoverdrive << ook
     sdm_schemas >> tap
     tap >> portal
-    datalinker >> tap
+    hoverdrive >> tap
+    portal >> Users("Users")
