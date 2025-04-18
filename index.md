@@ -2,9 +2,9 @@
 
 ```{abstract}
 When presenting LSST data through VO services, we want to annotate that data with links to documentation, such as the table and column descriptions in data release documentation sites hosted on `lsst.io`.
-This technote describes a system where we implement a linking service that uses the IVOA DataLink standard to provide links to table and column documentation.
-This link service, which resides in the Rubin Science Platform (RSP), is called by TAP schema queries.
-In turn, the link service queries Ook, Rubin Observatory's documentation metadata service that indexes the link inventories of documentation sites.
+This technote describes a system where we implement a linking service called Hoverdrive that uses the IVOA DataLink standard to provide links to table and column documentation.
+The Hoverdrive link service, which resides in the Rubin Science Platform (RSP), is called by TAP schema queries.
+In turn, Hoverdrive queries Ook, Rubin Observatory's documentation metadata service that indexes the link inventories of documentation sites.
 These link inventories are prepared and included with Sphinx documentation builds using Sphinx extensions provided by the Documenteer package.
 With this standards-based approach, clients like the Portal can show descriptions and links to data documentation from their user interfaces.
 ```
@@ -12,9 +12,6 @@ With this standards-based approach, clients like the Portal can show description
 ## High-level overview
 
 This overview traces the system's component architecture from the end-user's perspective through to the intention of the documentation author.
-
-```{rst-class} technote-wide-content
-```
 
 ```{diagrams} overview_diagram.py
 :filename: overview-diagram.png
@@ -24,10 +21,9 @@ Consider a Rubin Science Platform user who is working in the Portal to query and
 The Firefly-based Portal shows information about tables and columns by making queries against the [TAP][tap] schema.
 The LSST TAP schemas are annotated with [DataLink][datalink] service descriptors pointing to link endpoints, also hosted in the RSP, that provide URLs to related entities like table and column descriptions in LSST data release documentation.
 These service descriptors are added to the TAP schema through definition files in [sdm_schemas][sdm_schemas], which is managed through [Felis][felis].
-The service descriptors specify access URLs, including query parameters, to link endpoints provided by another RSP service.
-In the RSP, the [datalinker][datalinker] Python application provides a link service that can be extended for this application.
-The link endpoints, through the datalinker service, operate in the RSP so that they can be aware of what data is available in that RSP and can make any last-mile transformations to the links, including adding RSP-specific links.
-See [](#datalinker-service).
+The service descriptors specify access URLs, including query parameters, to link endpoints provided by another RSP service, [hoverdrive][hoverdrive].
+The link endpoints, through the [hoverdrive][hoverdrive] service, operate in the RSP so that they can be aware of what data is available in that RSP and can make any last-mile transformations to the links, including adding RSP-specific links.
+See [](#hoverdrive-service).
 
 [^agnostic]: Although we use the Portal as the example, and also as the driving use case, by adopting the IVOA DataLink standard other VO clients can also get documentation links.
 
@@ -344,16 +340,15 @@ This information can have interesting applications beyond the links API by provi
 For example, documentation discussing the SDM could have dynamic references to the SDM data in Ook to ensure that their documentation is always up-to-date with the latest schema.
 This concept is discussed in [SQR-087 Structured information service: preliminary notes](https://sqr-087.lsst.io/).
 
-(datalinker-service)=
+(hoverdrive-service)=
 ## VO documentation linking
 
 From the Rubin Science Platform, clients won't directly query the Ook link service.
-Instead, they will query a VO data linking service that uses the Ook link service as a backend.
-As a specific example [datalinker][datalinker] is a Python project that hosts data linking endpoints for the RSP for use the [DataLink][datalink] protocol.
-
+Instead, they will query a VO data linking service, [hoverdrive][hoverdrive] that uses the Ook link service as a backend.
+Hoverdrive uses the IVOA DataLink protocol to provide a standardized interface.
 There are two parts to the [DataLink][datalink] specification: service descriptors and the link endpoints.
 
-### Service descriptors for TAP schema documentation
+### Service descriptors
 
 DataLink service descriptors annotate a result with metadata about link endpoints that can be called by the client to get information related to the result.
 For a TAP query result, the service descriptor would be embedded in the result's VOTable under a `RESOURCE` element with a `type="meta"` attribute.
@@ -370,21 +365,42 @@ For the RSP, datalink service descriptors are built from templates hosted in the
 ```
 
 ```{note}
-Questions:
-
-- What is the ID in this case?
-- What parameters can we meaningfully pass to the link endpoint? For example, can we specify a way to include all columns in a table? Can be specify a subset of columns?
-- Can the same link endpoint both describe a table itself and all its columns? Or is that two different services?
+The details of the service descriptor are not yet finalized.
 ```
 
-### Link endpoints for documentation
+### Hoverdrive link endpoints
 
-The link endpoints, which are outlined by the service descriptors, respond with VOTables of documentation links.
+The link endpoints, which are defined by the service descriptors, are provided by the [hoverdrive][hoverdrive] application.
+Two endpoints provide table-specific links and column-specific links, respectively:
 
-The link endpoints derive their data from the {ref}`Ook links API <ook-links-api>`, and in fact the Ook links API generally mirrors the datalink endpoints for entity documentation links.
-The differences are that the datalink endpoint requests are authenticated with RSP credentials and that responses are VOTables.
-The VO datalink service should ideally cache responses from the Ook link service since the responses are generally stable and apply to all RSP users.
+- `/api/hoverdrive/table-docs-links{?table,redirect}`
+- `/api/hoverdrive/column-docs-links{?table,column,redirect}`
 
+Per typical VO conventions, the `table`[^tablenaming] and `column` names are passed as query parameters.
+
+[^tablenaming]: In VO, the table name is unique and therefore VO doesn't have the concept of a separate schema name, although the Rubin SDM does. Ook follows the Rubin SDM convention of a schema/table/column hierarchy, but hoverdrive presents the VO convention. Hoverdrive adapts the two conventions, knowing that in the Rubin SDM, VO tables names are formatted as `schema_name.table_name` (e.g., `dr1.Object`).
+
+```{note}
+The VO standard allows query parameter to be repeated to indicate a list of values.
+We need to check if FastAPI supports this.
+```
+
+The hoverdrive endpoints derive their data from the {ref}`Ook links API <ook-links-api>`.
+This data may be cached in the hoverdrive service to improve performance.
+
+#### VOTable response
+
+Hoverdrive responds with a VOTable that contains documentation links relevant to the table or column.
+
+```{note}
+The schema for the VOTable response is not yet defined.
+```
+
+#### Redirect response
+
+When a `?redirect=true` query parameter is passed to the hoverdrive link endpoints, the response is a 307 redirect to the most-relevant link for the specific table or column.
+The definition of "most relevant" can be configured, but could be related to the link type.
+For example, the redirect could be to the schema browser.
 
 [Sphinx]: https://www.sphinx-doc.org/
 [Documenteer]: https://documenteer.lsst.io/
@@ -395,4 +411,4 @@ The VO datalink service should ideally cache responses from the Ook link service
 [domain]: https://www.sphinx-doc.org/en/master/extdev/domainapi.html
 [datalink]: https://www.ivoa.net/documents/DataLink/
 [tap]: https://www.ivoa.net/documents/TAP/
-[datalinker]: https://github.com/lsst-sqre/datalinker
+[hoverdrive]: https://github.com/lsst-sqre/hoverdrive
