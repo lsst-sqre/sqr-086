@@ -346,18 +346,64 @@ This concept is discussed in [SQR-087 Structured information service: preliminar
 From the Rubin Science Platform, clients won't directly query the Ook link service.
 Instead, they will query a VO data linking service, [hoverdrive][hoverdrive] that uses the Ook link service as a backend.
 Hoverdrive uses the IVOA DataLink protocol to provide a standardized interface.
-There are two parts to the [DataLink][datalink] specification: service descriptors and the link endpoints.
+There are two parts to the [DataLink][datalink] specification: link endpoints and service descriptors.
+
+### Hoverdrive link endpoints
+
+Hoverdrive provides two sets of endpoints for linking to documentation.
+
+#### Redirect endpoints
+
+The first endpoints provide the user with a redirect to the most relevant link for a specific table or column.
+Per typical VO conventions, the `table`[^tablenaming] and `column` names are passed as query parameters:
+
+- `GET /api/hoverdrive/table-docs-redirect{?table}`
+- `GET /api/hoverdrive/column-docs-redirect{?table,column}`
+
+```{note}
+These endpoints are now available as of Hoverdrive 0.2.0.
+```
+
+With this redirect functionality, Hoverdrive chooses the most relevant link.
+Typically this would be configured as a schema browser link or a link to the canonical documentation reference for the table or column.
+
+[^tablenaming]: In VO, the table name is unique and therefore VO doesn't have the concept of a separate schema name, although the Rubin SDM does. Ook follows the Rubin SDM convention of a schema/table/column hierarchy, but hoverdrive presents the VO convention. Hoverdrive adapts the two conventions, knowing that in the Rubin SDM, VO tables names are formatted as `schema_name.table_name` (e.g., `dr1.Object`).
+
+#### Bulk link endpoints
+
+The second category provides multiple links for one or more tables or columns:
+
+- `/api/hoverdrive/table-docs-links{?table}`
+- `/api/hoverdrive/column-docs-links{?table,column}`
+
+With this approach, the client can get multiple links for a single table or column, and each link is annotated with its type and source.
+For example, one link could be to the schema browser, and another could be to a tutorial notebook.
+
+To get links in bulk, the VO standard allows query parameters to be repeated to indicate a list of values.
+For example, to get links for the `Visit` and `Object` tables:
+
+```{code-block}
+GET /api/hoverdrive/table-docs-links?table=dr1.Visit&table=dr1.Object
+```
+
+For these endpoints, Hoverdrive responds with a VOTable that contains documentation links relevant to the table or column.
+
+```{note}
+The schema for the VOTable response is not yet defined.
+```
+
+#### Performance
+
+The hoverdrive endpoints derive their data from the {ref}`Ook links API <ook-links-api>`.
+These data may be cached in the hoverdrive service to improve performance.
 
 ### Service descriptors
 
-DataLink service descriptors annotate a result with metadata about link endpoints that can be called by the client to get information related to the result.
-For a TAP query result, the service descriptor would be embedded in the result's VOTable under a `RESOURCE` element with a `type="meta"` attribute.
-
-```{note}
-For a TAP schema query result, is this also the case?
-```
+DataLink service descriptors annotate a TAP query result with metadata about endpoints that can be called by the client to get information related to the result.
+Service descriptors make the Hoverdrive link endpoints available to the client.
 
 For the RSP, datalink service descriptors are built from templates hosted in the [sdm_schemas][sdm_schemas] repository.
+These are the service desciptors for the redirect endpoints:
 
 ```{literalinclude} service-descriptor-example.xml
 :class: technote-wide-content
@@ -367,42 +413,6 @@ For the RSP, datalink service descriptors are built from templates hosted in the
 ```{note}
 The details of the service descriptor are not yet finalized.
 ```
-
-### Hoverdrive link endpoints
-
-The link endpoints, which are defined by the service descriptors, are provided by the [hoverdrive][hoverdrive] application.
-Two endpoints provide table-specific links and column-specific links, respectively:
-
-- `/api/hoverdrive/table-docs-links{?table,redirect}`
-- `/api/hoverdrive/column-docs-links{?table,column,redirect}`
-
-Per typical VO conventions, the `table`[^tablenaming] and `column` names are passed as query parameters.
-
-[^tablenaming]: In VO, the table name is unique and therefore VO doesn't have the concept of a separate schema name, although the Rubin SDM does. Ook follows the Rubin SDM convention of a schema/table/column hierarchy, but hoverdrive presents the VO convention. Hoverdrive adapts the two conventions, knowing that in the Rubin SDM, VO tables names are formatted as `schema_name.table_name` (e.g., `dr1.Object`).
-
-To get links in bulk, the VO standard allows query parameters to be repeated to indicate a list of values.
-For example, to get links for the `Visit` and `Object` tables:
-
-```{code-block}
-GET /api/hoverdrive/table-docs-links?table=dr1.Visit&table=dr1.Object
-```
-
-The hoverdrive endpoints derive their data from the {ref}`Ook links API <ook-links-api>`.
-These data may be cached in the hoverdrive service to improve performance.
-
-#### VOTable response
-
-Hoverdrive responds with a VOTable that contains documentation links relevant to the table or column.
-
-```{note}
-The schema for the VOTable response is not yet defined.
-```
-
-#### Redirect response
-
-When a `?redirect=true` query parameter is passed to the hoverdrive link endpoints, the response is a 307 redirect to the most-relevant link for the specific table or column.
-The definition of "most relevant" can be configured, but could be related to the link type.
-For example, the redirect could be to the schema browser.
 
 [Sphinx]: https://www.sphinx-doc.org/
 [Documenteer]: https://documenteer.lsst.io/
